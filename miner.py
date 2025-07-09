@@ -164,6 +164,11 @@ async def submit(request: Request):
     return result
 
 
+
+@app.get("/healthcheck")
+async def healthchecker():
+    return {"status": "OK"}
+
 if __name__ == "__main__":
     import uvicorn
 
