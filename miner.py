@@ -8,7 +8,7 @@ from starlette.requests import Request
 app = FastAPI()
 
 llm = Llama(
-    model_path="Llama-3.2-3B-Instruct-Q6_K_L.gguf",
+    model_path="./gemma3-12b-claude-3.7-sonnet-reasoning-distilled.Q8_0.gguf",
     n_ctx=int(os.getenv("CONTEXT_SIZE", "8192")),
 )
 
