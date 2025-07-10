@@ -2,45 +2,50 @@ import json
 import os
 
 from fastapi import FastAPI, HTTPException
-from llama_cpp import Llama
 from starlette.requests import Request
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import torch
 
 app = FastAPI()
 
-llm = Llama(
-    model_path="./gemma3-12b-claude-3.7-sonnet-reasoning-distilled.Q8_0.gguf",
-    n_ctx=int(os.getenv("CONTEXT_SIZE", "8192")),
+# Load tokenizer and model from local directory containing .safetensors files
+model_name_or_path = "./DeepSeek-R1-Distill-Qwen-7B"  # Update this path accordingly
+
+tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name_or_path,
+    torch_dtype=torch.bfloat16,  # Or torch.float16 depending on your GPU RAM
+    device_map="auto"
+)
+
+# Create a text generation pipeline
+pipe = pipeline(
+    "text-generation",
+    model=model,
+    tokenizer=tokenizer,
+    max_new_tokens=4096,
+    do_sample=True,
+    temperature=0.7,
+    top_p=0.95,
+    repetition_penalty=1.1
 )
 
 ROLE_SYSTEM = "system"
 ROLE_ASSISTANT = "assistant"
 ROLE_USER = "user"
 
-
 KNOWN_VULNERABILITIES = [
-    "Reentrancy",
-    "Gas griefing",
-    "Oracle manipulation",
-    "Bad randomness",
-    "Unexpected privilege grants",
-    "Forced reception",
-    "Integer overflow/underflow",
-    "Race condition",
-    "Unguarded function",
-    "Inefficient storage key",
-    "Front-running potential",
-    "Miner manipulation",
-    "Storage collision",
-    "Signature replay",
-    "Unsafe operation",
-    "Invalid code"
+    "Reentrancy", "Gas griefing", "Oracle manipulation", "Bad randomness", 
+    "Unexpected privilege grants", "Forced reception", "Integer overflow/underflow",
+    "Race condition", "Unguarded function", "Inefficient storage key",
+    "Front-running potential", "Miner manipulation", "Storage collision",
+    "Signature replay", "Unsafe operation", "Invalid code"
 ]
 
 PROMPT = f"""
 You are a professional Solidity smart contract auditor assisting in identifying and analyzing potential vulnerabilities in a given contract.
 
 Given the Solidity contract code with line numbers, analyze it thoroughly and generate a detailed audit report in strict JSON format as specified below. 
-If no clear vulnerabilities exist, still report any suspicious or non-standard patterns that may warrant further review.
 
 When identifying and classifying security issues, consider the following known vulnerability types:
 {', '.join(KNOWN_VULNERABILITIES)}
@@ -74,26 +79,16 @@ Output Format:
         "fixedLines": string
     }}
 ]
-
-Important Instructions:
-- Do not add any extra comments or explanations outside the JSON.
-- Use only valid JSON syntax; escape special characters where necessary.
-- If there are no findings, return an empty array `[]`.
-- Do not use markdown formatting or additional text — output only the JSON object.
 """.strip()
 
 
 def generate_audit(source: str):
+    full_prompt = f"{PROMPT}\n\n### SOLIDITY CONTRACT CODE:\n{source}"
 
-    completion = llm.create_chat_completion(
-        messages=[
-            {"role": ROLE_SYSTEM, "content": PROMPT},
-            {"role": ROLE_USER, "content": source},
-        ],
-        response_format={"type": "json_object"},
-    )
-    message = completion["choices"][0]["message"]["content"]
-    return message
+    output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id)
+    response = output[0]["generated_text"]
+    
+    return response
 
 
 REQUIRED_KEYS = {
@@ -164,10 +159,10 @@ async def submit(request: Request):
     return result
 
 
-
 @app.get("/healthcheck")
 async def healthchecker():
     return {"status": "OK"}
+
 
 if __name__ == "__main__":
     import uvicorn
