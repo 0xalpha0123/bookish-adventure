@@ -159,6 +159,23 @@ async def submit(request: Request):
     return result
 
 
+@app.post("/forward")
+async def submit(request: Request):
+    tries = int(os.getenv("MAX_TRIES", "3"))
+    is_valid, result = False, None
+    contract_code = (await request.body()).decode("utf-8")
+    while tries > 0:
+        result = generate_audit(contract_code)
+        result = try_prepare_result(result)
+        if result is not None:
+            is_valid = True
+            break
+        tries -= 1
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Unable to prepare audit")
+    return result
+
+
 @app.get("/healthcheck")
 async def healthchecker():
     return {"status": "OK"}
