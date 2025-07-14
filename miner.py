@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from starlette.requests import Request
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
+import requests
 
 app = FastAPI()
 
