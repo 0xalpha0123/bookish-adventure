@@ -7,6 +7,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 import requests
 import httpx
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 app = FastAPI()
