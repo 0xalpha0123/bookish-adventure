@@ -307,6 +307,7 @@ async def test_audit():
             is_valid = True
             break
         tries -= 1
+        break
     if not is_valid:
         raise HTTPException(status_code=400, detail="Unable to prepare audit")
     return result
