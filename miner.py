@@ -6,6 +6,7 @@ from starlette.requests import Request
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 import logging
+import re
 logging.basicConfig(level=logging.INFO)
 
 
@@ -227,33 +228,61 @@ def generate_audit(source: str):
         }
     ], indent=2)
 
+
+logging.basicConfig(level=logging.INFO)
+
 def extract_json_from_response(text: str) -> str:
-    """Extracts JSON content enclosed in triple backticks (```json ... ```) or directly parses if no markdown."""
+    """
+    Extracts JSON content enclosed in triple backticks (```json ... ```) or directly parses if no markdown.
+    Returns a stringified JSON array.
+    """
     try:
         # Try to find JSON inside ```json ... ``` blocks
-        start_idx = text.find("```json")
-        if start_idx != -1:
-            end_idx = text.find("```", start_idx + 7)
-            if end_idx == -1:
-                end_idx = len(text)
-            json_str = text[start_idx + 7:end_idx].strip()
-        else:
+        json_match = re.search(r"```json\s*(\[[\s\S]*?\])\s*```", text, re.DOTALL)
+        if not json_match:
             # Try to find any JSON array/object without markdown
-            start_idx = text.find("[")
-            if start_idx == -1:
-                start_idx = text.find("{")
-            if start_idx == -1:
-                raise ValueError("No valid JSON or markdown block found")
+            json_match = re.search(r"(\[[\s\S]*\{[\s\S]*\}[\s\S]*\])", text, re.DOTALL)
 
-            end_idx = text.rfind("]") + 1 if text.rfind("]") > start_idx else text.rfind("}") + 1
-            if end_idx <= start_idx:
-                raise ValueError("Mismatched JSON structure")
+        if not json_match:
+            raise ValueError("No valid JSON found in response")
 
-            json_str = text[start_idx:end_idx]
+        json_str = json_match.group(1).strip()
 
-        # Parse and re-serialize to validate and format
+        # Fix common syntax issues
+        json_str = re.sub(r'(["\'])(?:(?=(\\?))\2.)*?\1', lambda m: m.group(0).replace('\n', '\\n'), json_str)  # Escape newlines in strings
+        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)  # Remove trailing commas
+        json_str = json_str.replace('“', '"').replace('”', '"')  # Fix smart quotes
+
+        # Parse and validate
         json_obj = json.loads(json_str)
-        return json.dumps(json_obj, indent=2)
+
+        if not isinstance(json_obj, list):
+            raise ValueError("Expected JSON array at top level")
+
+        cleaned = []
+        for idx, item in enumerate(json_obj):
+            if not isinstance(item, dict):
+                logging.warning(f"Item at index {idx} is not a dict: {item}")
+                continue
+
+            # Ensure required fields exist
+            missing = [key for key in ["fromLine", "toLine", "vulnerabilityClass", "description"] if key not in item]
+            if missing:
+                logging.warning(f"Missing required keys {missing} in item: {item}")
+                continue
+
+            # Convert line numbers to int if they're strings
+            for k in ["fromLine", "toLine"]:
+                if isinstance(item[k], str) and item[k].isdigit():
+                    item[k] = int(item[k])
+
+            # Normalize priorArt to list
+            if "priorArt" in item and not isinstance(item["priorArt"], list):
+                item["priorArt"] = [item["priorArt"]] if item["priorArt"] else []
+
+            cleaned.append(item)
+
+        return json.dumps(cleaned, indent=2)
 
     except Exception as e:
         logging.error(f"Failed to extract JSON: {e}")
