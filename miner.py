@@ -279,10 +279,12 @@ async def healthchecker():
 
 @app.get("/test-audit")
 async def test_audit():
+    print( {"status": "OK"})
+    app_url = "http://localhost:5001/submit"
+    print( {"status": "OK"})
+    async with httpx.AsyncClient() as client:
+        response = await client.post(app_url, content=SOLIDITY_CONTRACT.encode('utf-8'), headers={"Content-Type": "application/json"})
     return {"status": "OK"}
-    # app_url = "http://localhost:5001/submit"
-    # async with httpx.AsyncClient() as client:
-    #     response = await client.post(app_url, content=SOLIDITY_CONTRACT.encode('utf-8'), headers={"Content-Type": "application/json"})
     # if response.status_code == 200:
     #     return response.json()
     # else:
