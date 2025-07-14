@@ -303,8 +303,9 @@ async def test_audit():
     print(contract_code)
     while tries > 0:
         result = generate_audit(contract_code)
-        print(result)
+        print('generate_audit', result)
         result = try_prepare_result(result)
+        print('try_prepare_result', result)
         print(result)
         if result is not None:
             is_valid = True
@@ -318,7 +319,4 @@ async def test_audit():
 if __name__ == "__main__":
     import uvicorn
     
-    result = generate_audit(SOLIDITY_CONTRACT)
-    print(result)
-
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
