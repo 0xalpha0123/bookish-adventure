@@ -244,8 +244,8 @@ logging.basicConfig(level=logging.INFO)
 
 def extract_json_from_response(text: str) -> str:
     """
-    Extracts JSON content enclosed in triple backticks (```json ... ```)
-    or attempts to fix and parse raw JSON-like text.
+    Extracts JSON content from raw model response.
+    Handles markdown blocks, backticks, malformed JSON, etc.
     Returns a stringified JSON array.
     """
     try:
@@ -264,6 +264,7 @@ def extract_json_from_response(text: str) -> str:
         json_str = re.sub(r'(["\'])(?:(?=(\\?))\2.)*?\1', lambda m: m.group(0).replace('\n', '\\n'), json_str)  # Escape newlines in strings
         json_str = re.sub(r',\s*([\]}])', r'\1', json_str)  # Remove trailing commas
         json_str = json_str.replace('“', '"').replace('”', '"')  # Fix smart quotes
+        json_str = json_str.replace('`', '"')  # Replace backticks with quotes
 
         # Parse and validate
         json_obj = json.loads(json_str)
@@ -277,19 +278,14 @@ def extract_json_from_response(text: str) -> str:
                 logging.warning(f"Item at index {idx} is not a dict: {item}")
                 continue
 
-            # Remove unknown keys
-            item = {k: v for k, v in item.items() if k in [
-                "fromLine", "toLine", "vulnerabilityClass", "description", "testCase", "priorArt", "fixedLines"
-            ]}
-
             # Ensure required fields exist
-            missing = [key for key in REQUIRED_KEYS if key not in item]
+            missing = [key for key in ["fromLine", "toLine", "vulnerabilityClass", "description"] if key not in item]
             if missing:
                 logging.warning(f"Missing required keys {missing} in item: {item}")
                 continue
 
             # Convert line numbers to int if they're strings
-            for k in INT_KEYS:
+            for k in ["fromLine", "toLine"]:
                 if isinstance(item[k], str) and item[k].isdigit():
                     item[k] = int(item[k])
 
@@ -297,10 +293,10 @@ def extract_json_from_response(text: str) -> str:
             if "priorArt" in item and not isinstance(item["priorArt"], list):
                 item["priorArt"] = [item["priorArt"]] if item["priorArt"] else []
 
-            # Normalize fixedLines to string
-            if "fixedLines" in item:
-                if isinstance(item["fixedLines"], list):
-                    item["fixedLines"] = "\n".join(item["fixedLines"])
+            # Normalize fixedLines and testCase to strings
+            for k in ["fixedLines", "testCase"]:
+                if k in item and isinstance(item[k], str):
+                    item[k] = item[k].strip()
 
             cleaned.append(item)
 
