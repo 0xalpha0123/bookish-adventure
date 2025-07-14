@@ -66,7 +66,7 @@ You are a professional Solidity auditor and security analyst. Your task is to re
    [
      {{
        "fromLine": 1,
-       "toLine": <total_lines>,
+       "toLine": <total_lines_of_contract_code>,
        "vulnerabilityClass": "Invalid Code",
        "description": "The contract contains syntax errors or undeclared identifiers and cannot be compiled."
      }}
