@@ -5,8 +5,6 @@ from fastapi import FastAPI, HTTPException
 from starlette.requests import Request
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
-import requests
-import httpx
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -274,7 +272,7 @@ async def submit(request: Request):
 
 
 @app.post("/forward")
-async def submit(request: Request):
+async def forward(request: Request):
     tries = int(os.getenv("MAX_TRIES", "3"))
     is_valid, result = False, None
     contract_code = (await request.body()).decode("utf-8")
@@ -305,7 +303,6 @@ async def test_audit():
         print(result)
         print("==================================================================")
         result = try_prepare_result(result)
-        print(result)
         if result is not None:
             is_valid = True
             break
