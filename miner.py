@@ -59,7 +59,7 @@ Your analysis must include:
 - A concise but thorough description of why the code is vulnerable.
 - A minimal test case or exploit scenario that demonstrates how the vulnerability could be triggered.
 - Prior Art: Known real-world exploits or incidents related to this type of vulnerability.
-- Suggested fixed lines of code that resolve the issue without introducing new ones.
+- Suggested fixed or recommended lines of code that resolve the issue without introducing new ones.
 
 If the entire code cannot be compiled or analyzed meaningfully:
 - Return a single entry with:
