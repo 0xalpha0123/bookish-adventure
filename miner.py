@@ -58,7 +58,7 @@ You are a professional Solidity auditor and security analyst. Your task is to re
    - "toLine": ending line number of the issue (integer)
    - "vulnerabilityClass": choose from the known classes; if none match, use "Invalid Code" or "Other"
    - "description": explain why this is a vulnerability in detail
-   - "testCase": provide a short Solidity-style test case showing how the vulnerability could be exploited
+   - "testCase": provide Solidity-style test case showing for each vulnerability how the vulnerability could be exploited
    - "priorArt": list at least one known exploit or incident related to this vulnerability type (e.g., "The DAO", "Parity Wallet Hack")
    - "fixedLines": show corrected/recommended lines of code that resolve the issue without introducing new ones
 3. If no issues are found, return an empty array `[]`.
