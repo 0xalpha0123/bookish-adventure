@@ -58,7 +58,7 @@ You are a professional Solidity auditor and security analyst. Your task is to re
    - "toLine": ending line number of the issue (integer)
    - "vulnerabilityClass": choose from the known classes; if none match, use "Invalid Code" or "Other"
    - "description": explain why this is a vulnerability in detail
-   - "testCase": provide a small foundry-style solidity test case showing for each vulnerability how the vulnerability could be exploited
+   - "testCase": provide small forge-style solidity test script snippets for each vulnerability how the vulnerability could be exploited
    - "priorArt": list at least one known exploit or incident related to this vulnerability type (e.g., "The DAO", "Parity Wallet Hack")
    - "fixedLines": show corrected/recommended code that resolve the issue without introducing new ones
 3. If no issues are found, return an empty array `[]`.
@@ -72,9 +72,19 @@ You are a professional Solidity auditor and security analyst. Your task is to re
      }}
    ]
 5. Return only the JSON result inside triple backticks:
-   ```json
-   [...]
-   ```
+```json
+[
+    {{
+        "fromLine": "Start line of the vulnerability", 
+        "toLine": "End line of the vulnerability",
+        "vulnerabilityClass": "Type of vulnerability (e.g., Reentrancy, Integer Overflow, Invalid Code)",
+        "testCase": "Example code that could trigger the vulnerability",
+        "description": "Detailed description of the issue",
+        "priorArt": "Similar vulnerabilities encountered in wild before. Type: array",
+        "fixedLines": "Fixed version of the original source or recommendeds version",
+    }},
+]
+```
 ### CONTRACT CODE:
 """.strip()
 
