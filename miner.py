@@ -229,13 +229,7 @@ def generate_audit(source: str):
     ], indent=2)
 
 
-logging.basicConfig(level=logging.INFO)
-
 def extract_json_from_response(text: str) -> str:
-    """
-    Extracts JSON content enclosed in triple backticks (```json ... ```) or directly parses if no markdown.
-    Returns a stringified JSON array.
-    """
     try:
         # Try to find JSON inside ```json ... ``` blocks
         json_match = re.search(r"```json\s*(\[[\s\S]*?\])\s*```", text, re.DOTALL)
@@ -265,6 +259,11 @@ def extract_json_from_response(text: str) -> str:
                 logging.warning(f"Item at index {idx} is not a dict: {item}")
                 continue
 
+            # Remove unknown keys like descriptionExplanation
+            item = {k: v for k, v in item.items() if k in [
+                "fromLine", "toLine", "vulnerabilityClass", "description", "testCase", "priorArt", "fixedLines"
+            ]}
+
             # Ensure required fields exist
             missing = [key for key in ["fromLine", "toLine", "vulnerabilityClass", "description"] if key not in item]
             if missing:
@@ -279,6 +278,11 @@ def extract_json_from_response(text: str) -> str:
             # Normalize priorArt to list
             if "priorArt" in item and not isinstance(item["priorArt"], list):
                 item["priorArt"] = [item["priorArt"]] if item["priorArt"] else []
+
+            # Normalize fixedLines to string
+            if "fixedLines" in item:
+                if isinstance(item["fixedLines"], list):
+                    item["fixedLines"] = "\n".join(item["fixedLines"])
 
             cleaned.append(item)
 
