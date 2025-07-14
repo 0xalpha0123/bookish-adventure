@@ -23,7 +23,7 @@ pipe = pipeline(
     "text-generation",
     model=model,
     tokenizer=tokenizer,
-    max_new_tokens=4096,
+    max_new_tokens=32768,
     do_sample=True,
     temperature=0.7,
     top_p=0.95,
