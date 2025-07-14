@@ -72,6 +72,9 @@ You are a professional Solidity auditor and security analyst. Your task is to re
      }}
    ]
 5. Return only the JSON result inside triple backticks:
+
+### Output Format
+
 ```json
 [
     {{
