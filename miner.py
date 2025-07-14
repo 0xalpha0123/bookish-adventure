@@ -6,6 +6,8 @@ from starlette.requests import Request
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 import requests
+import httpx
+
 
 app = FastAPI()
 
@@ -277,12 +279,9 @@ async def healthchecker():
 
 @app.get("/test-audit")
 async def test_audit():
-    """
-    Submits a hardcoded Solidity contract to the audit endpoint and returns the result.
-    """
     app_url = "http://localhost:5001/submit"
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(app_url, data=SOLIDITY_CONTRACT.encode('utf-8'), headers=headers)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(app_url, content=SOLIDITY_CONTRACT.encode('utf-8'), headers={"Content-Type": "application/json"})
     if response.status_code == 200:
         return response.json()
     else:
@@ -290,9 +289,9 @@ async def test_audit():
 
 
 if __name__ == "__main__":
-    # import uvicorn
+    import uvicorn
     
-    result = generate_audit(SOLIDITY_CONTRACT)
-    print(result)
+    # result = generate_audit(SOLIDITY_CONTRACT)
+    # print(result)
 
-    # uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
