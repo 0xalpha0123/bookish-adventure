@@ -198,44 +198,59 @@ INT_KEYS = ("fromLine", "toLine")
 
 
 def try_prepare_result(result) -> list[dict] | None:
+    logging.info("Raw result to prepare:")
+    logging.info(result)
+
     if isinstance(result, str):
         try:
             result = json.loads(result)
-        except:
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON decode failed: {str(e)}")
             return None
-    if isinstance(result, dict):
-        if (
-            len(result) == 1
-            and isinstance(list(result.values())[0], list)
-            and all(isinstance(item, dict) for item in list(result.values())[0])
-        ):
+
+    # At this point, result should be a list of dicts
+    if not isinstance(result, list):
+        if isinstance(result, dict) and len(result) == 1 and isinstance(list(result.values())[0], list):
             result = list(result.values())[0]
         else:
             result = [result]
+
     prepared = []
-    for item in result:
+
+    for idx, item in enumerate(result):
+        if not isinstance(item, dict):
+            logging.warning(f"Item at index {idx} is not a dict: {item}")
+            continue
+
+        # Ensure required keys exist
         for key in REQUIRED_KEYS:
             if key not in item:
+                logging.warning(f"Missing required key '{key}' in item: {item}")
                 return None
+
         cleared = {k: item[k] for k in REQUIRED_KEYS}
-        if (
-            "priorArt" in item
-            and isinstance(item["priorArt"], list)
-            and all(isinstance(x, str) for x in item["priorArt"])
-        ):
+
+        # Optional keys
+        if "priorArt" in item and isinstance(item["priorArt"], list):
             cleared["priorArt"] = item["priorArt"]
         if "fixedLines" in item and isinstance(item["fixedLines"], str):
             cleared["fixedLines"] = item["fixedLines"]
         if "testCase" in item and isinstance(item["testCase"], str):
             cleared["testCase"] = item["testCase"]
+
+        # Validate int keys
         for k in INT_KEYS:
-            if isinstance(cleared[k], int) or (
-                isinstance(item[k], str) and item[k].isdigit()
-            ):
-                cleared[k] = int(cleared[k])
+            val = item[k]
+            if isinstance(val, int):
+                cleared[k] = val
+            elif isinstance(val, str) and val.isdigit():
+                cleared[k] = int(val)
             else:
+                logging.warning(f"Invalid value for key '{k}': {val}, type: {type(val)}")
                 return None
+
         prepared.append(cleared)
+
     return prepared
 
 
