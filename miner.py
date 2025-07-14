@@ -54,11 +54,11 @@ You are a professional Solidity auditor and security analyst. Your task is to re
 ### INSTRUCTIONS:
 1. Analyze the entire contract carefully.
 2. For each vulnerability found, return one object with the following fields:
-   - "fromLine": starting line number of the issue
-   - "toLine": ending line number of the issue
+   - "fromLine": starting line number of the issue (integer)
+   - "toLine": ending line number of the issue (integer)
    - "vulnerabilityClass": choose from the known classes; if none match, use "Invalid Code" or "Other"
-   - "description": explain why this is a vulnerability
-   - "testCase": provide a minimal scenario showing how the vulnerability could be exploited
+   - "description": explain why this is a vulnerability in detail
+   - "testCase": provide a minimal Solidity-style test case showing how the vulnerability could be exploited
    - "priorArt": list at least one known exploit or incident related to this vulnerability type (e.g., "The DAO", "Parity Wallet Hack")
    - "fixedLines": show corrected lines of code that resolve the issue without introducing new ones
 3. If no issues are found, return an empty array `[]`.
@@ -66,25 +66,31 @@ You are a professional Solidity auditor and security analyst. Your task is to re
    [
      {{
        "fromLine": 1,
-       "toLine": <total_lines_of_contract_code>,
+       "toLine": <total_lines>,
        "vulnerabilityClass": "Invalid Code",
        "description": "The contract contains syntax errors or undeclared identifiers and cannot be compiled."
      }}
    ]
 5. Return only the JSON result inside triple backticks:
+   ```json
+   [...]
+   ```
+## ✅ Example Output (as Desired)
 
-Output Format:
+```json
 [
-    {{
-        "fromLine": integer,
-        "toLine": integer,
-        "vulnerabilityClass": string,
-        "testCase": string,
-        "description": string,
-        "priorArt": [string],
-        "fixedLines": string
-    }}
+  {
+    "fromLine": 55,
+    "toLine": 58,
+    "vulnerabilityClass": "Unsafe operation",
+    "description": "The `terminateEscrow` function performs an unsafe operation by calling the external escrow contract to cancel vesting but fails to update the internal state of the `VestingHolder`. After the external call on line 57, the holder's status remains `ACTIVE` and `releasedAmount` is not updated, creating inconsistency between the escrow state (cancelled) and the vesting manager state (still active). This means `calculateVestedAmount()` will continue calculating as if vesting is active, and the holder appears to have an active vesting schedule when the escrow has been terminated.",
+    "testCase": "// After calling terminateEscrow(holder)\n// The holder status remains ACTIVE instead of TERMINATED\nVestingHolder memory info = getHolderInfo(holder);\nassert(info.status == HolderStatus.ACTIVE); // This passes but shouldn't\n// The escrow is cancelled but vesting appears active",
+    "priorArt": ["The DAO", "ReentrancyAttack in multiple DeFi contracts"],
+    "fixedLines": "function terminateEscrow(address holder) external onlyOwner {\n    require(_vestingHolders[holder].status == HolderStatus.ACTIVE, 'Cannot stop vesting for a non active holder');\n    uint256 vestedAmount = calculateVestedAmount(holder);\n    CoreEscrow(_holderToEscrow[holder]).cancelVesting(vestedAmount);\n    _vestingHolders[holder].status = HolderStatus.TERMINATED;\n    _vestingHolders[holder].releasedAmount = vestedAmount;\n    emit VestingTerminated(holder, vestedAmount);\n}"
+  }
 ]
+```
+### CONTRACT CODE:
 """.strip()
 
 
@@ -181,15 +187,46 @@ contract CoreEscrow {
 }
 '''
 
+def add_line_numbers(code):
+    lines = code.strip().split('\n')
+    return '\n'.join(f"{i+1}: {line}" for i, line in enumerate(lines))
 
 def generate_audit(source: str):
-    full_prompt = f"{PROMPT}\n### SOLIDITY CONTRACT CODE:\n{source}"
-    
-    # Generate raw output from the model
-    output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id)
-    response = output[0]["generated_text"]
+    full_prompt = PROMPT + "\n\n### SOLIDITY CONTRACT CODE:\n" + source
+    MAX_RETRIES = 3
+    TEMPERATURE_STEP = 0.1
+    temperature = 0.7
 
-    return extract_json_from_response(response)
+    for attempt in range(MAX_RETRIES):
+        try:
+            logging.info(f"Attempt {attempt + 1} to generate audit...")
+            output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id, temperature=temperature, do_sample=(temperature > 0))
+            response = output[0]["generated_text"]
+
+            json_result = extract_json_from_response(response)
+            logging.info("Raw model output:")
+            logging.info(response)
+            logging.info("Parsed JSON result:")
+            logging.info(json_result)
+
+            return json_result
+
+        except Exception as e:
+            logging.error(f"Error during generation (attempt {attempt + 1}): {e}")
+            temperature = max(0.0, temperature - TEMPERATURE_STEP)
+            logging.info(f"Retrying with temperature={temperature}")
+
+    logging.warning("Failed to generate valid JSON after all retries.")
+    return json.dumps([
+        {
+            "fromLine": 1,
+            "toLine": len(source.splitlines()),
+            "vulnerabilityClass": "Invalid Code",
+            "description": "Model failed to produce valid JSON after multiple attempts.",
+            "priorArt": [],
+            "fixedLines": ""
+        }
+    ], indent=2)
 
 def extract_json_from_response(text: str) -> str:
     """Extracts JSON content enclosed in triple backticks (```json ... ```) or directly parses if no markdown."""
