@@ -244,8 +244,8 @@ logging.basicConfig(level=logging.INFO)
 
 def extract_json_from_response(text: str) -> str:
     """
-    Extracts JSON content from raw model response.
-    Handles markdown blocks, backticks, malformed JSON, etc.
+    Extracts JSON content enclosed in triple backticks (```json ... ```)
+    or attempts to fix and parse raw JSON-like text.
     Returns a stringified JSON array.
     """
     try:
@@ -261,7 +261,7 @@ def extract_json_from_response(text: str) -> str:
         json_str = json_match.group(1).strip()
 
         # Fix common syntax issues
-        json_str = re.sub(r'(["\'])(?:(?=(\\?))\2.)*?\1', lambda m: m.group(0).replace('\n', '\\n'), json_str)  # Escape newlines in strings
+        json_str = re.sub(r'(["\'])(?:(?=(\\?))\2.)*?\1', lambda m: m.group(0).replace('\n', '\\n'), json_str)
         json_str = re.sub(r',\s*([\]}])', r'\1', json_str)  # Remove trailing commas
         json_str = json_str.replace('“', '"').replace('”', '"')  # Fix smart quotes
         json_str = json_str.replace('`', '"')  # Replace backticks with quotes
@@ -269,38 +269,7 @@ def extract_json_from_response(text: str) -> str:
         # Parse and validate
         json_obj = json.loads(json_str)
 
-        if not isinstance(json_obj, list):
-            raise ValueError("Expected JSON array at top level")
-
-        cleaned = []
-        for idx, item in enumerate(json_obj):
-            if not isinstance(item, dict):
-                logging.warning(f"Item at index {idx} is not a dict: {item}")
-                continue
-
-            # Ensure required fields exist
-            missing = [key for key in ["fromLine", "toLine", "vulnerabilityClass", "description"] if key not in item]
-            if missing:
-                logging.warning(f"Missing required keys {missing} in item: {item}")
-                continue
-
-            # Convert line numbers to int if they're strings
-            for k in ["fromLine", "toLine"]:
-                if isinstance(item[k], str) and item[k].isdigit():
-                    item[k] = int(item[k])
-
-            # Normalize priorArt to list
-            if "priorArt" in item and not isinstance(item["priorArt"], list):
-                item["priorArt"] = [item["priorArt"]] if item["priorArt"] else []
-
-            # Normalize fixedLines and testCase to strings
-            for k in ["fixedLines", "testCase"]:
-                if k in item and isinstance(item[k], str):
-                    item[k] = item[k].strip()
-
-            cleaned.append(item)
-
-        return json.dumps(cleaned, indent=2)
+        return json.dumps(json_obj, indent=2)
 
     except Exception as e:
         logging.error(f"Failed to extract JSON: {e}")
@@ -317,14 +286,13 @@ def extract_json_from_response(text: str) -> str:
 
 
 def try_prepare_result(result) -> list | None:
-    logging.info("Raw result to prepare:")
-    logging.info(result)
-    
+    """
+    Ensures result is a list of dicts with required keys and correct types.
+    """
     if isinstance(result, str):
         try:
             result = json.loads(result)
-        except json.JSONDecodeError as e:
-            logging.error(f"JSON decode failed: {str(e)}")
+        except json.JSONDecodeError:
             return None
 
     if not isinstance(result, list):
@@ -333,39 +301,32 @@ def try_prepare_result(result) -> list | None:
         else:
             result = [result]
 
-    prepared = []
-    for idx, item in enumerate(result):
+    cleaned = []
+    for item in result:
         if not isinstance(item, dict):
-            logging.warning(f"Item at index {idx} is not a dict: {item}")
             continue
 
         # Ensure required keys exist
-        for key in REQUIRED_KEYS:
-            if key not in item:
-                logging.warning(f"Missing required key '{key}' in item: {item}")
-                return None
+        if not all(k in item for k in REQUIRED_KEYS):
+            continue
 
-        cleared = {k: item[k] for k in REQUIRED_KEYS}
-
-        # Optional keys
-        for key in ["testCase", "priorArt", "fixedLines"]:
-            if key in item:
-                cleared[key] = item[key]
-
-        # Validate integer keys
+        # Convert line numbers to int if they're strings
         for k in INT_KEYS:
-            val = item[k]
-            if isinstance(val, int):
-                cleared[k] = val
-            elif isinstance(val, str) and val.isdigit():
-                cleared[k] = int(val)
-            else:
-                logging.warning(f"Invalid value for key '{k}': {val}, type: {type(val)}")
-                return None
+            if isinstance(item[k], str) and item[k].isdigit():
+                item[k] = int(item[k])
 
-        prepared.append(cleared)
+        # Normalize priorArt to list
+        if "priorArt" in item and not isinstance(item["priorArt"], list):
+            item["priorArt"] = [item["priorArt"]] if item["priorArt"] else []
 
-    return prepared
+        # Normalize fixedLines and testCase to strings
+        for k in ["fixedLines", "testCase"]:
+            if k in item and isinstance(item[k], str):
+                item[k] = item[k].strip()
+
+        cleaned.append({k: v for k, v in item.items() if k in REQUIRED_KEYS or k in ["testCase", "priorArt", "fixedLines"]})
+
+    return cleaned
 
 
 @app.post("/submit")
