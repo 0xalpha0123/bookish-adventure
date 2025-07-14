@@ -75,21 +75,6 @@ You are a professional Solidity auditor and security analyst. Your task is to re
    ```json
    [...]
    ```
-## ✅ Example Output (as Desired)
-
-```json
-[
-  {
-    "fromLine": 55,
-    "toLine": 58,
-    "vulnerabilityClass": "Unsafe operation",
-    "description": "The `terminateEscrow` function performs an unsafe operation by calling the external escrow contract to cancel vesting but fails to update the internal state of the `VestingHolder`. After the external call on line 57, the holder's status remains `ACTIVE` and `releasedAmount` is not updated, creating inconsistency between the escrow state (cancelled) and the vesting manager state (still active). This means `calculateVestedAmount()` will continue calculating as if vesting is active, and the holder appears to have an active vesting schedule when the escrow has been terminated.",
-    "testCase": "// After calling terminateEscrow(holder)\n// The holder status remains ACTIVE instead of TERMINATED\nVestingHolder memory info = getHolderInfo(holder);\nassert(info.status == HolderStatus.ACTIVE); // This passes but shouldn't\n// The escrow is cancelled but vesting appears active",
-    "priorArt": ["The DAO", "ReentrancyAttack in multiple DeFi contracts"],
-    "fixedLines": "function terminateEscrow(address holder) external onlyOwner {\n    require(_vestingHolders[holder].status == HolderStatus.ACTIVE, 'Cannot stop vesting for a non active holder');\n    uint256 vestedAmount = calculateVestedAmount(holder);\n    CoreEscrow(_holderToEscrow[holder]).cancelVesting(vestedAmount);\n    _vestingHolders[holder].status = HolderStatus.TERMINATED;\n    _vestingHolders[holder].releasedAmount = vestedAmount;\n    emit VestingTerminated(holder, vestedAmount);\n}"
-  }
-]
-```
 ### CONTRACT CODE:
 """.strip()
 
