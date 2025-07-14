@@ -46,20 +46,21 @@ KNOWN_VULNERABILITIES = [
 ]
 
 PROMPT = f"""
-You are a professional Solidity smart contract auditor assisting in identifying and analyzing potential vulnerabilities in a given contract.
-
-Given the Solidity contract code with line numbers, analyze it thoroughly and generate a detailed audit report in strict JSON format as specified below. 
+You are a professional Solidity smart contract auditor assisting in identifying and analyzing all potential vulnerabilities using known categories from the list below.
 
 When identifying and classifying security issues, consider the following known vulnerability types:
 {', '.join(KNOWN_VULNERABILITIES)}
 
+Given the Solidity contract code with line numbers, analyze it thoroughly and generate a detailed audit report in strict JSON format as specified below. 
+
 Your analysis must include:
 - Precise line numbers (`fromLine`, `toLine`) where each vulnerability exists.
-- A clear classification from the list above (or 'Invalid Code' if applicable).
+- "vulnerabilityClass": choose from the known classes; if none match, use "Invalid Code" or "Other".
 - A concise but thorough description of why the code is vulnerable.
-- A minimal test case or exploit scenario that demonstrates how the vulnerability could be triggered.
-- Prior Art: Known real-world exploits or incidents related to this type of vulnerability.
-- Suggested fixed or recommended lines of code that resolve the issue without introducing new ones.
+- A minimal test case or minimal exploit scenario that demonstrates how the vulnerability could be exploited.
+- Prior Art: Known real-world exploits or incidents related to this type of vulnerability (e.g., "The DAO", "Parity Wallet Hack").
+- Corrected lines of code that resolve the issue without introducing new ones.
+- If no issues are found, return an empty array `[]`.
 
 If the entire code cannot be compiled or analyzed meaningfully:
 - Return a single entry with:
