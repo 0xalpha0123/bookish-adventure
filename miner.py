@@ -75,13 +75,13 @@ You are a professional Solidity auditor and security analyst. Your task is to re
 ```json
 [
     {{
-        "fromLine": "Start line of the vulnerability", 
-        "toLine": "End line of the vulnerability",
-        "vulnerabilityClass": "Type of vulnerability (e.g., Reentrancy, Integer Overflow, Invalid Code)",
-        "testCase": "Example code that could trigger the vulnerability",
-        "description": "Detailed description of the issue",
-        "priorArt": "Similar vulnerabilities encountered in wild before. Type: array",
-        "fixedLines": "Fixed version of the original source or recommendeds version",
+        "fromLine": <fromLine>, 
+        "toLine": <toLine>,
+        "vulnerabilityClass": <vulnerabilityClass>,
+        "testCase": <testCase>,
+        "description": <description>,
+        "priorArt": <priorArt>,
+        "fixedLines": <fixedLines>,
     }},
 ]
 ```
