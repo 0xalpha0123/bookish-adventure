@@ -266,6 +266,8 @@ def extract_json_from_response(text: str) -> str:
         json_str = json_str.replace('“', '"').replace('”', '"')  # Fix smart quotes
         json_str = json_str.replace('`', '"')  # Replace backticks with quotes
 
+        print(json_str)
+
         # Parse and validate
         json_obj = json.loads(json_str)
 
