@@ -186,37 +186,46 @@ def generate_audit(source: str):
     output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id)
     response = output[0]["generated_text"]
 
-    print("generate_audit ==================================================================")
-    print(response)
-    print("generate_audit ==================================================================")
+    return extract_json_from_response(response)
 
-    # Try to extract JSON from the response
+def extract_json_from_response(text: str) -> str:
+    """Extracts JSON content enclosed in triple backticks (```json ... ```) or directly parses if no markdown."""
     try:
-        # Find JSON object in string
-        start_idx = response.find("[")
-        end_idx = response.rfind("]") + 1
-        if start_idx == -1 or end_idx == -1:
-            raise ValueError("No valid JSON array found in model output")
+        # Try to find JSON inside ```json ... ``` blocks
+        start_idx = text.find("```json")
+        if start_idx != -1:
+            end_idx = text.find("```", start_idx + 7)
+            if end_idx == -1:
+                end_idx = len(text)
+            json_str = text[start_idx + 7:end_idx].strip()
+        else:
+            # Try to find any JSON array/object without markdown
+            start_idx = text.find("[")
+            if start_idx == -1:
+                start_idx = text.find("{")
+            if start_idx == -1:
+                raise ValueError("No valid JSON or markdown block found")
 
-        json_str = response[start_idx:end_idx]
-        print("json_str ==================================================================")
-        print(json_str)
-        print("json_str ==================================================================")
+            end_idx = text.rfind("]") + 1 if text.rfind("]") > start_idx else text.rfind("}") + 1
+            if end_idx <= start_idx:
+                raise ValueError("Mismatched JSON structure")
+
+            json_str = text[start_idx:end_idx]
+
+        # Parse and re-serialize to validate and format
         json_obj = json.loads(json_str)
-        print("json_obj ==================================================================")
-        print(json_obj)
-        print("json_obj ==================================================================")
+        return json.dumps(json_obj, indent=2)
 
-        return json.dumps(json_obj, indent=2)  # Return clean JSON string
-
-    except (ValueError, json.JSONDecodeError) as e:
-        logging.error(f"Failed to parse model output as JSON: {e}")
+    except Exception as e:
+        logging.error(f"Failed to extract JSON: {e}")
         return json.dumps([
             {
                 "fromLine": 1,
-                "toLine": len(source.splitlines()),
+                "toLine": len(text.splitlines()),
                 "vulnerabilityClass": "Invalid Code",
-                "description": "Model returned invalid JSON or non-parsable output."
+                "description": "Model returned invalid JSON or non-parsable output.",
+                "priorArt": [],
+                "fixedLines": "Ensure the model returns valid JSON within ```json ... ``` blocks."
             }
         ], indent=2)
 
