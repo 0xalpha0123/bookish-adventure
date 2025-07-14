@@ -275,19 +275,6 @@ contract CoreEscrow {
 }
 '''
 
-@app.get("/test-audit")
-async def test_audit():
-    """
-    Submits a hardcoded Solidity contract to the audit endpoint and returns the result.
-    """
-    app_url = "http://localhost:5001/submit"
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(app_url, data=SOLIDITY_CONTRACT.encode('utf-8'), headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise HTTPException(status_code=response.status_code, detail="Audit failed")
-
 
 if __name__ == "__main__":
     import uvicorn
