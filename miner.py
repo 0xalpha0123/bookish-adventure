@@ -180,12 +180,35 @@ contract CoreEscrow {
 
 
 def generate_audit(source: str):
-    full_prompt = f"{PROMPT}\n\n### SOLIDITY CONTRACT CODE:\n{source}"
-
+    full_prompt = f"{PROMPT}\n### SOLIDITY CONTRACT CODE:\n{source}"
+    
+    # Generate raw output from the model
     output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id)
     response = output[0]["generated_text"]
-    
-    return response
+
+    # Try to extract JSON from the response
+    try:
+        # Find JSON object in string
+        start_idx = response.find("[")
+        end_idx = response.rfind("]") + 1
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError("No valid JSON array found in model output")
+
+        json_str = response[start_idx:end_idx]
+        json_obj = json.loads(json_str)
+
+        return json.dumps(json_obj, indent=2)  # Return clean JSON string
+
+    except (ValueError, json.JSONDecodeError) as e:
+        logging.error(f"Failed to parse model output as JSON: {e}")
+        return json.dumps([
+            {
+                "fromLine": 1,
+                "toLine": len(source.splitlines()),
+                "vulnerabilityClass": "Invalid Code",
+                "description": "Model returned invalid JSON or non-parsable output."
+            }
+        ], indent=2)
 
 
 REQUIRED_KEYS = {
@@ -307,7 +330,6 @@ async def test_audit():
             is_valid = True
             break
         tries -= 1
-        break
     if not is_valid:
         raise HTTPException(status_code=400, detail="Unable to prepare audit")
     return result
