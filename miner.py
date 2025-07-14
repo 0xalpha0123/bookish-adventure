@@ -1,16 +1,16 @@
 import json
 import os
+
 from fastapi import FastAPI, HTTPException
 from starlette.requests import Request
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
-import uvicorn
-import requests
 
 app = FastAPI()
 
 # Load tokenizer and model from local directory containing .safetensors files
 model_name_or_path = "./DeepSeek-R1-Distill-Qwen-7B"  # Update this path accordingly
+
 tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 model = AutoModelForCausalLM.from_pretrained(
     model_name_or_path,
@@ -33,6 +33,7 @@ pipe = pipeline(
 ROLE_SYSTEM = "system"
 ROLE_ASSISTANT = "assistant"
 ROLE_USER = "user"
+
 KNOWN_VULNERABILITIES = [
     "Reentrancy", "Gas griefing", "Oracle manipulation", "Bad randomness", 
     "Unexpected privilege grants", "Forced reception", "Integer overflow/underflow",
@@ -43,9 +44,12 @@ KNOWN_VULNERABILITIES = [
 
 PROMPT = f"""
 You are a professional Solidity smart contract auditor assisting in identifying and analyzing potential vulnerabilities in a given contract.
+
 Given the Solidity contract code with line numbers, analyze it thoroughly and generate a detailed audit report in strict JSON format as specified below. 
+
 When identifying and classifying security issues, consider the following known vulnerability types:
 {', '.join(KNOWN_VULNERABILITIES)}
+
 Your analysis must include:
 - Precise line numbers (`fromLine`, `toLine`) where each vulnerability exists.
 - A clear classification from the list above (or 'Invalid Code' if applicable).
@@ -53,6 +57,7 @@ Your analysis must include:
 - A minimal test case or exploit scenario that demonstrates how the vulnerability could be triggered.
 - Prior Art: Known real-world exploits or incidents related to this type of vulnerability.
 - Suggested fixed lines of code that resolve the issue without introducing new ones.
+
 If the entire code cannot be compiled or analyzed meaningfully:
 - Return a single entry with:
     {{
@@ -61,6 +66,7 @@ If the entire code cannot be compiled or analyzed meaningfully:
         "vulnerabilityClass": "Invalid Code",
         "description": "The contract contains syntax errors or undeclared identifiers and cannot be compiled."
     }}
+
 Output Format:
 [
     {{
@@ -75,11 +81,15 @@ Output Format:
 ]
 """.strip()
 
+
 def generate_audit(source: str):
     full_prompt = f"{PROMPT}\n\n### SOLIDITY CONTRACT CODE:\n{source}"
+
     output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id)
     response = output[0]["generated_text"]
+    
     return response
+
 
 REQUIRED_KEYS = {
     "fromLine",
@@ -88,6 +98,7 @@ REQUIRED_KEYS = {
     "description",
 }
 INT_KEYS = ("fromLine", "toLine")
+
 
 def try_prepare_result(result) -> list[dict] | None:
     if isinstance(result, str):
@@ -149,8 +160,20 @@ async def submit(request: Request):
 
 
 @app.post("/forward")
-async def forward(request: Request):
-    return await submit(request)
+async def submit(request: Request):
+    tries = int(os.getenv("MAX_TRIES", "3"))
+    is_valid, result = False, None
+    contract_code = (await request.body()).decode("utf-8")
+    while tries > 0:
+        result = generate_audit(contract_code)
+        result = try_prepare_result(result)
+        if result is not None:
+            is_valid = True
+            break
+        tries -= 1
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Unable to prepare audit")
+    return result
 
 
 @app.get("/healthcheck")
@@ -158,7 +181,6 @@ async def healthchecker():
     return {"status": "OK"}
 
 
-# 🧪 Test Endpoint — Submit hardcoded contract
 SOLIDITY_CONTRACT = '''
 pragma solidity ^0.8.0;
 contract VestingManager {
@@ -267,4 +289,6 @@ async def test_audit():
 
 
 if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
