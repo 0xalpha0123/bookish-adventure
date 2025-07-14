@@ -186,6 +186,10 @@ def generate_audit(source: str):
     output = pipe(full_prompt, pad_token_id=tokenizer.eos_token_id)
     response = output[0]["generated_text"]
 
+    print("generate_audit ==================================================================")
+    print(response)
+    print("generate_audit ==================================================================")
+
     # Try to extract JSON from the response
     try:
         # Find JSON object in string
@@ -195,7 +199,13 @@ def generate_audit(source: str):
             raise ValueError("No valid JSON array found in model output")
 
         json_str = response[start_idx:end_idx]
+        print("json_str ==================================================================")
+        print(json_str)
+        print("json_str ==================================================================")
         json_obj = json.loads(json_str)
+        print("json_obj ==================================================================")
+        print(json_obj)
+        print("json_obj ==================================================================")
 
         return json.dumps(json_obj, indent=2)  # Return clean JSON string
 
