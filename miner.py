@@ -281,7 +281,7 @@ async def healthchecker():
 async def test_audit():
     tries = int(os.getenv("MAX_TRIES", "3"))
     is_valid, result = False, None
-    contract_code = SOLIDITY_CONTRACT.encode("utf-8")
+    contract_code = SOLIDITY_CONTRACT
     while tries > 0:
         result = generate_audit(contract_code)
         result = try_prepare_result(result)
