@@ -290,6 +290,9 @@ async def test_audit():
 
 
 if __name__ == "__main__":
-    import uvicorn
+    # import uvicorn
+    
+    result = generate_audit(SOLIDITY_CONTRACT)
+    print(result)
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
+    # uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
