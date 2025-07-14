@@ -46,30 +46,32 @@ KNOWN_VULNERABILITIES = [
 ]
 
 PROMPT = f"""
-You are a professional Solidity smart contract auditor assisting in identifying and analyzing all potential vulnerabilities using known categories from the list below.
+You are a professional Solidity auditor and security analyst. Your task is to review the provided smart contract code and identify all potential vulnerabilities using known categories from the list below.
 
-When identifying and classifying security issues, consider the following known vulnerability types:
+### KNOWN VULNERABILITY CLASSES:
 {', '.join(KNOWN_VULNERABILITIES)}
 
-Given the Solidity contract code with line numbers, analyze it thoroughly and generate a detailed audit report in strict JSON format as specified below. 
-
-Your analysis must include:
-- Precise line numbers (`fromLine`, `toLine`) where each vulnerability exists.
-- "vulnerabilityClass": choose from the known classes; if none match, use "Invalid Code" or "Other".
-- A concise but thorough description of why the code is vulnerable.
-- A minimal test case or minimal exploit scenario that demonstrates how the vulnerability could be exploited.
-- Prior Art: Known real-world exploits or incidents related to this type of vulnerability (e.g., "The DAO", "Parity Wallet Hack").
-- Corrected lines of code that resolve the issue without introducing new ones.
-- If no issues are found, return an empty array `[]`.
-
-If the entire code cannot be compiled or analyzed meaningfully:
-- Return a single entry with:
-    {{
-        "fromLine": 1,
-        "toLine": Total number of lines in the code,
-        "vulnerabilityClass": "Invalid Code",
-        "description": "The contract contains syntax errors or undeclared identifiers and cannot be compiled."
-    }}
+### INSTRUCTIONS:
+1. Analyze the entire contract carefully.
+2. For each vulnerability found, return one object with the following fields:
+   - "fromLine": starting line number of the issue
+   - "toLine": ending line number of the issue
+   - "vulnerabilityClass": choose from the known classes; if none match, use "Invalid Code" or "Other"
+   - "description": explain why this is a vulnerability
+   - "testCase": provide a minimal scenario showing how the vulnerability could be exploited
+   - "priorArt": list at least one known exploit or incident related to this vulnerability type (e.g., "The DAO", "Parity Wallet Hack")
+   - "fixedLines": show corrected lines of code that resolve the issue without introducing new ones
+3. If no issues are found, return an empty array `[]`.
+4. If the code is invalid or cannot be compiled, return exactly:
+   [
+     {{
+       "fromLine": 1,
+       "toLine": <total_lines>,
+       "vulnerabilityClass": "Invalid Code",
+       "description": "The contract contains syntax errors or undeclared identifiers and cannot be compiled."
+     }}
+   ]
+5. Return only the JSON result inside triple backticks:
 
 Output Format:
 [
