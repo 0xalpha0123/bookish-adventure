@@ -46,7 +46,7 @@ KNOWN_VULNERABILITIES = [
 ]
 
 PROMPT = f"""
-You are a professional Solidity auditor and security analyst. Your task is to review the provided smart contract code and identify all potential vulnerabilities using known categories from the list below.
+You are a professional Solidity auditor and security analyst. Your task is to review the provided smart contract code and identify ALL potential vulnerabilities in the given smart contract using known categories from the list below.
 
 ### KNOWN VULNERABILITY CLASSES:
 {', '.join(KNOWN_VULNERABILITIES)}
