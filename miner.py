@@ -280,11 +280,15 @@ async def healthchecker():
 @app.get("/test-audit")
 async def test_audit():
     tries = int(os.getenv("MAX_TRIES", "3"))
+    print(tries)
     is_valid, result = False, None
     contract_code = SOLIDITY_CONTRACT
+    print(contract_code)
     while tries > 0:
         result = generate_audit(contract_code)
+        print(result)
         result = try_prepare_result(result)
+        print(result)
         if result is not None:
             is_valid = True
             break
@@ -297,7 +301,7 @@ async def test_audit():
 if __name__ == "__main__":
     import uvicorn
     
-    # result = generate_audit(SOLIDITY_CONTRACT)
-    # print(result)
+    result = generate_audit(SOLIDITY_CONTRACT)
+    print(result)
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT", "5001")))
