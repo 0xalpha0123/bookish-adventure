@@ -229,7 +229,25 @@ def generate_audit(source: str):
     ], indent=2)
 
 
+# Define required keys
+REQUIRED_KEYS = {
+    "fromLine",
+    "toLine",
+    "vulnerabilityClass",
+    "description",
+}
+
+# Keys that must be integers
+INT_KEYS = ("fromLine", "toLine")
+
+logging.basicConfig(level=logging.INFO)
+
 def extract_json_from_response(text: str) -> str:
+    """
+    Extracts JSON content enclosed in triple backticks (```json ... ```)
+    or attempts to fix and parse raw JSON-like text.
+    Returns a stringified JSON array.
+    """
     try:
         # Try to find JSON inside ```json ... ``` blocks
         json_match = re.search(r"```json\s*(\[[\s\S]*?\])\s*```", text, re.DOTALL)
@@ -259,19 +277,19 @@ def extract_json_from_response(text: str) -> str:
                 logging.warning(f"Item at index {idx} is not a dict: {item}")
                 continue
 
-            # Remove unknown keys like descriptionExplanation
+            # Remove unknown keys
             item = {k: v for k, v in item.items() if k in [
                 "fromLine", "toLine", "vulnerabilityClass", "description", "testCase", "priorArt", "fixedLines"
             ]}
 
             # Ensure required fields exist
-            missing = [key for key in ["fromLine", "toLine", "vulnerabilityClass", "description"] if key not in item]
+            missing = [key for key in REQUIRED_KEYS if key not in item]
             if missing:
                 logging.warning(f"Missing required keys {missing} in item: {item}")
                 continue
 
             # Convert line numbers to int if they're strings
-            for k in ["fromLine", "toLine"]:
+            for k in INT_KEYS:
                 if isinstance(item[k], str) and item[k].isdigit():
                     item[k] = int(item[k])
 
@@ -302,19 +320,10 @@ def extract_json_from_response(text: str) -> str:
         ], indent=2)
 
 
-REQUIRED_KEYS = {
-    "fromLine",
-    "toLine",
-    "vulnerabilityClass",
-    "description",
-}
-INT_KEYS = ("fromLine", "toLine")
-
-
-def try_prepare_result(result) -> list[dict] | None:
+def try_prepare_result(result) -> list | None:
     logging.info("Raw result to prepare:")
     logging.info(result)
-
+    
     if isinstance(result, str):
         try:
             result = json.loads(result)
@@ -322,7 +331,6 @@ def try_prepare_result(result) -> list[dict] | None:
             logging.error(f"JSON decode failed: {str(e)}")
             return None
 
-    # At this point, result should be a list of dicts
     if not isinstance(result, list):
         if isinstance(result, dict) and len(result) == 1 and isinstance(list(result.values())[0], list):
             result = list(result.values())[0]
@@ -330,7 +338,6 @@ def try_prepare_result(result) -> list[dict] | None:
             result = [result]
 
     prepared = []
-
     for idx, item in enumerate(result):
         if not isinstance(item, dict):
             logging.warning(f"Item at index {idx} is not a dict: {item}")
@@ -345,14 +352,11 @@ def try_prepare_result(result) -> list[dict] | None:
         cleared = {k: item[k] for k in REQUIRED_KEYS}
 
         # Optional keys
-        if "priorArt" in item and isinstance(item["priorArt"], list):
-            cleared["priorArt"] = item["priorArt"]
-        if "fixedLines" in item and isinstance(item["fixedLines"], str):
-            cleared["fixedLines"] = item["fixedLines"]
-        if "testCase" in item and isinstance(item["testCase"], str):
-            cleared["testCase"] = item["testCase"]
+        for key in ["testCase", "priorArt", "fixedLines"]:
+            if key in item:
+                cleared[key] = item[key]
 
-        # Validate int keys
+        # Validate integer keys
         for k in INT_KEYS:
             val = item[k]
             if isinstance(val, int):
