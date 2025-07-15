@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 from fastapi import FastAPI, HTTPException
 from starlette.requests import Request
@@ -9,6 +10,12 @@ import logging
 import re
 logging.basicConfig(level=logging.INFO)
 
+
+# Folder to store uploaded contracts
+CONTRACT_SAVE_DIR = "./uploaded_contracts"
+
+# Ensure the directory exists
+os.makedirs(CONTRACT_SAVE_DIR, exist_ok=True)
 
 app = FastAPI()
 
@@ -393,6 +400,17 @@ async def submit(request: Request):
     tries = int(os.getenv("MAX_TRIES", "3"))
     is_valid, result = False, None
     contract_code = (await request.body()).decode("utf-8")
+
+    # Save the contract code to a .txt file
+    timestamp = int(time.time())
+    filename = f"contract_{timestamp}.txt"
+    filepath = os.path.join(CONTRACT_SAVE_DIR, filename)
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(contract_code)
+
+    logging.info(f"Saved contract to {filepath}")
+
     while tries > 0:
         result = generate_audit(contract_code)
         result = try_prepare_result(result)
