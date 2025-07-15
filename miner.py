@@ -338,7 +338,7 @@ def extract_json_from_response(text: str) -> str:
         json_obj = json.loads(json_str)
 
         print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
-        print(json.loads("[]")
+        print(json.loads("[]"))
 
         return json.dumps(json_obj, indent=2)
 
