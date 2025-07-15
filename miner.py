@@ -62,7 +62,7 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
    - "description": Explain the vulnerability clearly, including root cause and impact
    - "testCase": Provide a small example test code snippet showing how the vulnerability can be triggered
    - "priorArt": List at least one known exploit
-   - "fixedLines": Show the minimal fixed or recommended version how to modify the original vulnerable code
+   - "fixedLines": minimal fixed version or recommended version how to modify the original vulnerable code
 
 3. If no issues are found, return: `[]`
 
@@ -339,6 +339,9 @@ def extract_json_from_response(text: str) -> str:
 
         # Parse and validate
         json_obj = json.loads(json_str)
+
+        print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+        print(json.loads("[]")
 
         return json.dumps(json_obj, indent=2)
 
