@@ -53,7 +53,7 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
 {', '.join(KNOWN_VULNERABILITIES)}
 
 ### INSTRUCTIONS:
-1. Analyze the entire contract carefully.
+1. Analyze the entire contract carefully and list all vulnerabilities found as an array.
 2. For each vulnerability found, return one object with these fields:
    - "fromLine": Start line of the issue (integer)
    - "toLine": End line of the issue (integer)
