@@ -56,13 +56,13 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
 ### INSTRUCTIONS:
 1. Analyze the entire contract carefully and list all possible vulnerabilities found in the given smart contract as an array.
 2. For each vulnerability found, return one object with these fields:
-   - "fromLine": Start line of the issue (integer)
-   - "toLine": End line of the issue (integer)
-   - "vulnerabilityClass": Choose from well-known classes or define yourself, use "Invalid code" only if the code cannot compile
-   - "description": Explain the vulnerability clearly, including root cause and impact
-   - "testCase": Provide a small example test code snippet showing how the vulnerability can be triggered
-   - "priorArt": List at least one known exploit
-   - "fixedLines": minimal fixed version or recommended version how to modify the original vulnerable code
+   - "fromLine": Start line of the issue (integer). Type: Integer
+   - "toLine": End line of the issue (integer). Type: Integer
+   - "vulnerabilityClass": Choose from well-known classes or define yourself, use "Invalid code" only if the code cannot compile. Type: string
+   - "description": Explain the vulnerability clearly, including root cause and impact. Type: string
+   - "testCase": Provide a small example test code snippet showing how the vulnerability can be triggered. Type: string
+   - "priorArt": List at least one known exploit. Type: array
+   - "fixedLines": minimal fixed version or recommended version how to modify the original vulnerable code. Type: string
 
 3. If no issues are found, return: `[]`
 
@@ -336,9 +336,6 @@ def extract_json_from_response(text: str) -> str:
 
         # Parse and validate
         json_obj = json.loads(json_str)
-
-        print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
-        print(json.loads("[]"))
 
         return json.dumps(json_obj, indent=2)
 
