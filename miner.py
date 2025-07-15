@@ -68,12 +68,12 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
 4. If the code cannot compile:
    Return exactly:
    [
-     {
+     {{
        "fromLine": 1,
        "toLine": <total_lines>,
        "vulnerabilityClass": "Invalid Code",
        "description": "The contract contains syntax errors or undeclared identifiers and cannot be compiled."
-     }
+     }}
    ]
 
 ### OUTPUT FORMAT:
@@ -82,7 +82,7 @@ Return ONLY a valid JSON array inside triple backticks:
 ```json
 [
 [
-    {
+    {{
         "fromLine": <integer>,
         "toLine": <integer>,
         "vulnerabilityClass": "<string>",
@@ -90,7 +90,7 @@ Return ONLY a valid JSON array inside triple backticks:
         "testCase": "<string>",
         "priorArt": ["<string>", ...],
         "fixedLines": "<string>"
-    }
+    }}
 ]
 ]
 ```
