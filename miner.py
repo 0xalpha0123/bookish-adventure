@@ -53,7 +53,7 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
 {', '.join(KNOWN_VULNERABILITIES)}
 
 ### INSTRUCTIONS:
-1. Analyze the entire contract carefully and list all vulnerabilities found as an array.
+1. Analyze the entire contract carefully and list all possible vulnerabilities found in the given smart contract as an array.
 2. For each vulnerability found, return one object with these fields:
    - "fromLine": Start line of the issue (integer)
    - "toLine": End line of the issue (integer)
@@ -256,6 +256,10 @@ def extract_json_from_response(text: str) -> str:
     try:
         # Find all JSON blocks
         json_blocks = re.findall(r"```json\s*([\s\S]*?)\s*```", text, re.DOTALL)
+
+        print("*********************************************************************************")
+        print(json_blocks)
+        print("*********************************************************************************")
 
         if json_blocks:
             # Use the last JSON block (most recent attempt)
