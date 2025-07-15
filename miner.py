@@ -60,7 +60,7 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
    - "toLine": End line of the issue (integer)
    - "vulnerabilityClass": Choose from well-known classes or define yourself, use "Invalid code" only if the code cannot compile
    - "description": Explain the vulnerability clearly, including root cause and impact
-   - "testCase": Provide a small forge-style test snippet showing how the vulnerability can be exploited
+   - "testCase": Provide a small example test code snippet showing how the vulnerability can be triggered
    - "priorArt": List at least one known exploit
    - "fixedLines": Show the minimal fixed or recommended version for the original vulnerable code
 
