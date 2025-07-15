@@ -268,8 +268,6 @@ def generate_audit(source: str):
             response = output[0]["generated_text"]
 
             json_result = extract_json_from_response(response)
-            logging.info("Raw model output:")
-            logging.info(response)
             logging.info("Parsed JSON result:")
             logging.info(json_result)
 
@@ -277,7 +275,6 @@ def generate_audit(source: str):
 
         except Exception as e:
             logging.error(f"Error during generation (attempt {attempt + 1}): {e}")
-            temperature = max(0.0, temperature - TEMPERATURE_STEP)
             logging.info(f"Retrying with temperature={temperature}")
 
     logging.warning("Failed to generate valid JSON after all retries.")
@@ -439,9 +436,6 @@ async def test_audit():
     contract_code = SOLIDITY_CONTRACT
     while tries > 0:
         result = generate_audit(contract_code)
-        print("==================================================================")
-        print(result)
-        print("==================================================================")
         result = try_prepare_result(result)
         if result is not None:
             is_valid = True
