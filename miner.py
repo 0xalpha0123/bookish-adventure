@@ -244,29 +244,30 @@ logging.basicConfig(level=logging.INFO)
 
 def extract_json_from_response(text: str) -> str:
     """
-    Extracts JSON content enclosed in triple backticks (```json ... ```)
-    or attempts to fix and parse raw JSON-like text.
+    Extracts the LAST JSON content enclosed in triple backticks (```json ... ```).
+    If no markdown blocks are found, tries to parse raw JSON-like text.
     Returns a stringified JSON array.
     """
     try:
-        # Try to find JSON inside ```json ... ``` blocks
-        json_match = re.search(r"```json\s*(\[[\s\S]*?\])\s*```", text, re.DOTALL)
-        if not json_match:
-            # Try to find any JSON array/object without markdown
+        # Find all JSON blocks
+        json_blocks = re.findall(r"```json\s*([\s\S]*?)\s*```", text, re.DOTALL)
+
+        if json_blocks:
+            # Use the last JSON block (most recent attempt)
+            json_str = json_blocks[-1].strip()
+            logging.info("Using last JSON block from response.")
+        else:
+            # Try to find any raw JSON array/object
             json_match = re.search(r"(\[[\s\S]*\{[\s\S]*\}[\s\S]*\])", text, re.DOTALL)
-
-        if not json_match:
-            raise ValueError("No valid JSON found in response")
-
-        json_str = json_match.group(1).strip()
+            if not json_match:
+                raise ValueError("No valid JSON found in response")
+            json_str = json_match.group(1).strip()
 
         # Fix common syntax issues
         json_str = re.sub(r'(["\'])(?:(?=(\\?))\2.)*?\1', lambda m: m.group(0).replace('\n', '\\n'), json_str)
         json_str = re.sub(r',\s*([\]}])', r'\1', json_str)  # Remove trailing commas
         json_str = json_str.replace('“', '"').replace('”', '"')  # Fix smart quotes
         json_str = json_str.replace('`', '"')  # Replace backticks with quotes
-
-        print(json_str)
 
         # Parse and validate
         json_obj = json.loads(json_str)
