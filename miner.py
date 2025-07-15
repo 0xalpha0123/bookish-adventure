@@ -28,8 +28,9 @@ pipe = pipeline(
     model=model,
     tokenizer=tokenizer,
     max_new_tokens=8192,
-    do_sample=True,
+    do_sample=False,
     temperature=0.7,
+    num_beams=1,
     top_p=0.95,
     repetition_penalty=1.1
 )
