@@ -49,7 +49,7 @@ KNOWN_VULNERABILITIES = [
 PROMPT = f"""
 You are an expert Solidity smart contract auditor. Your task is to analyze the provided contract and generate a vulnerability report in JSON format. This output will be validated automatically by AI auditors on the Bittensor subnet.
 
-### KNOWN VULNERABILITY CLASSES:
+### WELL-KNOWN VULNERABILITY CLASSES:
 {', '.join(KNOWN_VULNERABILITIES)}
 
 ### INSTRUCTIONS:
@@ -57,11 +57,11 @@ You are an expert Solidity smart contract auditor. Your task is to analyze the p
 2. For each vulnerability found, return one object with these fields:
    - "fromLine": Start line of the issue (integer)
    - "toLine": End line of the issue (integer)
-   - "vulnerabilityClass": Choose from known classes; use "Invalid Code" if needed
+   - "vulnerabilityClass": Choose from well-known classes or define yourself, use "Invalid code" only if the code cannot compile
    - "description": Explain the vulnerability clearly, including root cause and impact
    - "testCase": Provide a small forge-style test snippet showing how the vulnerability can be exploited
-   - "priorArt": List at least one known exploit related to this class (e.g., "The DAO", "Lendf.me")
-   - "fixedLines": Show the minimal corrected/recommended version of the vulnerable code
+   - "priorArt": List at least one known exploit
+   - "fixedLines": Show the minimal corrected or recommended version code for the original vulnerable code
 
 3. If no issues are found, return: `[]`
 
