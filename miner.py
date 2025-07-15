@@ -81,7 +81,6 @@ Return ONLY a valid JSON array inside triple backticks:
 
 ```json
 [
-[
     {{
         "fromLine": <integer>,
         "toLine": <integer>,
@@ -92,101 +91,177 @@ Return ONLY a valid JSON array inside triple backticks:
         "fixedLines": "<string>"
     }}
 ]
-]
 ```
 CONTRACT CODE:
 """.strip()
 
 
 SOLIDITY_CONTRACT = '''
-pragma solidity ^0.8.0;
-contract VestingManager {
-    enum HolderStatus {
-        INACTIVE,
-        ACTIVE,
-        TERMINATED
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+contract AssetTrackingSystem {
+    struct Asset {
+        string name;
+        uint256 acquisitionDate;
+        uint256 value;
+        address custodian;
+        bool isActive;
+        uint8 condition; // 1-10 rating
+        string location;
     }
-    struct VestingHolder {
-        uint256 startTime;
-        uint256 endTime;
-        uint256 totalAmount;
-        uint256 releasedAmount;
-        HolderStatus status;
-    }
-    address public owner;
-    uint256 public totalVestedTokens;
-    uint256 public vestingDuration;
-    mapping(address => VestingHolder) private _vestingHolders;
-    mapping(address => address) private _holderToEscrow;
-    event VestingInitiated(address indexed holder, uint256 amount, uint256 duration);
-    event VestingTerminated(address indexed holder, uint256 vestedAmount);
-    event EscrowCreated(address indexed holder, address escrowAddress);
-    modifier onlyOwner() {
-        require(msg.sender == owner, 'Only owner can call this function');
+
+    mapping(uint256 => Asset) private assets;
+    mapping(address => uint256[]) private custodianAssets;
+
+    uint256 private nextAssetId;
+    uint256 private totalAssetsValue;
+    address private systemAdmin;
+    uint256 private lastAuditDate;
+    uint8 private maintenanceThreshold;
+
+    event AssetRegistered(uint256 indexed assetId, string name, address custodian);
+    event AssetTransferred(uint256 indexed assetId, address indexed from, address indexed to);
+    event AssetDepreciated(uint256 indexed assetId, uint256 oldValue, uint256 newValue);
+    event AssetRetired(uint256 indexed assetId);
+    event MaintenanceRequired(uint256 indexed assetId, uint8 condition);
+
+    modifier onlyAdmin() {
+        require(msg.sender == systemAdmin, "Only admin can perform this action");
         _;
     }
-    constructor(uint256 _vestingDuration) {
-        owner = msg.sender;
-        vestingDuration = _vestingDuration;
-        totalVestedTokens = 0;
-    }
-    function createVestingSchedule(address holder, uint256 amount) external onlyOwner {
-        require(holder != address(0), 'Invalid holder address');
-        require(amount > 0, 'Amount must be greater than zero');
-        require(_vestingHolders[holder].status == HolderStatus.INACTIVE, 'Holder already has active vesting');
-        address escrowAddress = address(new CoreEscrow(holder, amount));
-        _holderToEscrow[holder] = escrowAddress;
-        _vestingHolders[holder] = VestingHolder({startTime: block.timestamp, endTime: block.timestamp + vestingDuration, totalAmount: amount, releasedAmount: 0, status: HolderStatus.ACTIVE});
-        totalVestedTokens += amount;
-        emit VestingInitiated(holder, amount, vestingDuration);
-        emit EscrowCreated(holder, escrowAddress);
-    }
-    function calculateVestedAmount(address holder) public view returns (uint256) {
-        VestingHolder memory holderInfo = _vestingHolders[holder];
-        if (holderInfo.status != HolderStatus.ACTIVE) {
-            return holderInfo.releasedAmount;
-        }
-        if (block.timestamp >= holderInfo.endTime) {
-            return holderInfo.totalAmount;
-        }
-        uint256 timeElapsed = block.timestamp - holderInfo.startTime;
-        uint256 totalVestingTime = holderInfo.endTime - holderInfo.startTime;
-        return (holderInfo.totalAmount * timeElapsed) / totalVestingTime;
-    }
-    function terminateEscrow(address holder) external onlyOwner {
-        require(_vestingHolders[holder].status == HolderStatus.ACTIVE, 'Cannot stop vesting for a non active holder');
-        CoreEscrow(_holderToEscrow[holder]).cancelVesting(calculateVestedAmount(holder));
-    }
-    function getHolderInfo(address holder) external view returns (VestingHolder memory) {
-        return _vestingHolders[holder];
-    }
-    function updateVestingDuration(uint256 newDuration) external onlyOwner {
-        require(newDuration > 0, 'Duration must be greater than zero');
-        vestingDuration = newDuration;
-    }
-}
-contract CoreEscrow {
-    address public beneficiary;
-    address public manager;
-    uint256 public totalAmount;
-    uint256 public releasedAmount;
-    bool public isCancelled;
-    constructor(address _beneficiary, uint256 _totalAmount) {
-        beneficiary = _beneficiary;
-        manager = msg.sender;
-        totalAmount = _totalAmount;
-        releasedAmount = 0;
-        isCancelled = false;
-    }
-    modifier onlyManager() {
-        require(msg.sender == manager, 'Only manager can call this function');
+
+    modifier assetExists(uint256 assetId) {
+        require(assets[assetId].acquisitionDate > 0, "Asset does not exist");
         _;
     }
-    function cancelVesting(uint256 vestedAmount) external onlyManager {
-        require(!isCancelled, 'Vesting already cancelled');
-        require(vestedAmount <= totalAmount, 'Vested amount exceeds total amount');
-        isCancelled = true;
-        releasedAmount = vestedAmount;
+
+    modifier onlyCustodian(uint256 assetId) {
+        require(assets[assetId].custodian == msg.sender, "Only the custodian can perform this action");
+        _;
+    }
+
+    constructor(uint8 _maintenanceThreshold) {
+        systemAdmin = msg.sender;
+        nextAssetId = 1;
+        lastAuditDate = block.timestamp;
+        maintenanceThreshold = _maintenanceThreshold;
+    }
+
+    function registerAsset(
+        string memory name,
+        uint256 value,
+        address custodian,
+        string memory location
+    ) external onlyAdmin returns (uint256) {
+        uint256 assetId = nextAssetId;
+
+        assets[assetId] = Asset({
+            name: name,
+            acquisitionDate: block.timestamp,
+            value: value,
+            custodian: custodian,
+            isActive: true,
+            condition: 10, // New asset in perfect condition
+            location: location
+        });
+
+        custodianAssets[custodian].push(assetId);
+        totalAssetsValue += value;
+        nextAssetId++;
+
+        emit AssetRegistered(assetId, name, custodian);
+        return assetId;
+    }
+
+    function transferAsset(uint256 assetId, address newCustodian) external assetExists(assetId) onlyCustodian(assetId) {
+        address currentCustodian = assets[assetId].custodian;
+
+        // Update asset custodian
+        assets[assetId].custodian = newCustodian;
+
+        // Update custodian mappings
+        custodianAssets[newCustodian].push(assetId);
+
+        // Remove from current custodian's list
+        uint256[] storage currentAssets = custodianAssets[currentCustodian];
+        for (uint256 i = 0; i < currentAssets.length; i++) {
+            if (currentAssets[i] == assetId) {
+                currentAssets[i] = currentAssets[currentAssets.length - 1];
+                currentAssets.pop();
+                break;
+            }
+        }
+
+        emit AssetTransferred(assetId, currentCustodian, newCustodian);
+    }
+
+    function updateAssetCondition(uint256 assetId, uint8 newCondition) external assetExists(assetId) onlyCustodian(assetId) {
+        require(newCondition > 0 && newCondition <= 10, "Condition must be between 1 and 10");
+
+        assets[assetId].condition = newCondition;
+
+        if (newCondition <= maintenanceThreshold) {
+            emit MaintenanceRequired(assetId, newCondition);
+        }
+    }
+
+    function depreciateAsset(uint256 assetId, uint256 newValue) external onlyAdmin assetExists(assetId) {
+        require(newValue < assets[assetId].value, "New value must be less than current value");
+
+        uint256 oldValue = assets[assetId].value;
+        uint256 difference = oldValue - newValue;
+
+        assets[assetId].value = newValue;
+        totalAssetsValue -= difference;
+
+        emit AssetDepreciated(assetId, oldValue, newValue);
+    }
+
+    function retireAsset(uint256 assetId) external onlyAdmin assetExists(assetId) {
+        require(assets[assetId].isActive, "Asset already retired");
+
+        assets[assetId].isActive = false;
+        totalAssetsValue -= assets[assetId].value;
+
+        emit AssetRetired(assetId);
+    }
+
+    function updateAssetLocation(uint256 assetId, string memory newLocation) external assetExists(assetId) onlyCustodian(assetId) {
+        assets[assetId].location = newLocation;
+    }
+
+    function conductAudit() external onlyAdmin {
+        lastAuditDate = block.timestamp;
+    }
+
+    function getAssetDetails(uint256 assetId) external view assetExists(assetId) returns (
+        string memory name,
+        uint256 acquisitionDate,
+        uint256 value,
+        address custodian,
+        bool isActive,
+        uint8 condition,
+        string memory location
+    ) {
+        Asset storage asset = assets[assetId];
+        return (
+            asset.name,
+            asset.acquisitionDate,
+            asset.value,
+            asset.custodian,
+            asset.isActive,
+            asset.condition,
+            asset.location
+        );
+    }
+
+    function getCustodianAssets(address custodian) external view returns (uint256[] memory) {
+        return custodianAssets[custodian];
+    }
+
+    function getTotalAssetsValue() external view onlyAdmin returns (uint256) {
+        return totalAssetsValue;
     }
 }
 '''
