@@ -344,16 +344,7 @@ def extract_json_from_response(text: str) -> str:
 
     except Exception as e:
         logging.error(f"Failed to extract JSON: {e}")
-        return json.dumps([
-            {
-                "fromLine": 1,
-                "toLine": len(text.splitlines()),
-                "vulnerabilityClass": "Invalid Code",
-                "description": "Model returned invalid JSON or non-parsable output.",
-                "priorArt": [],
-                "fixedLines": "Ensure the model returns valid JSON within ```json ... ``` blocks."
-            }
-        ], indent=2)
+        raise ValueError("No valid JSON found in response")
 
 
 def try_prepare_result(result) -> list | None:
